@@ -7,5 +7,5 @@ FROM node:20-alpine
 WORKDIR /app
 COPY --from=builder /app .
 ENV NODE_ENV=production
-EXPOSE 5000
+EXPOSE  0-65535
 CMD ["node", "server.js"]
