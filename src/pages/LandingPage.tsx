@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, BadgeCheck, Star, Car, Store, Contact, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
 import axios from 'axios';
-
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from '../config';
 
 export default function LandingPage() {
   const [headerAnimation, setHeaderAnimation] = useState('fade');
