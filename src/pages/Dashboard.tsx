@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { LogOut, ImagePlus, Trash2, Layout } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from '../config';
 
 export default function Dashboard() {
   const navigate = useNavigate();
