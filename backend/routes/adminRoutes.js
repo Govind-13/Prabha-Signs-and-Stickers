@@ -30,13 +30,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Helper route to register first admin (Remove in production)
+// Bootstrap-only: registration is allowed ONLY while zero admins exist.
+// Once any admin is in the DB this endpoint is locked, so the public
+// internet cannot create new admin accounts.
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const adminExists = await Admin.findOne({ username });
-    if (adminExists) {
-      return res.status(400).json({ message: 'Admin already exists' });
+    const anyAdmin = await Admin.findOne();
+    if (anyAdmin) {
+      return res.status(403).json({ message: 'Registration disabled. An admin already exists.' });
+    }
+    if (!username || !password) {
+      return res.status(400).json({ message: 'username and password required' });
     }
     const admin = await Admin.create({ username, password });
     res.status(201).json({

@@ -11,12 +11,19 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       const res = await axios.post(`${API_URL}/admin/login`, { username, password });
       localStorage.setItem('adminToken', res.data.token);
       navigate('/dashboard');
-    } catch (err) {
-      setError('Invalid username or password');
+    } catch (err: any) {
+      if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('Network')) {
+        setError(`Cannot reach API at ${API_URL}. The Render free-tier backend may be cold-starting — try again in 30s.`);
+      } else {
+        setError(err?.message || 'Login failed');
+      }
     }
   };
 
