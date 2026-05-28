@@ -9,12 +9,27 @@ from middleware.auth import protect
 
 sticker_blueprint = Blueprint('sticker_blueprint', __name__)
 
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
+
 # Configure Cloudinary
 cloudinary.config(
     cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
     api_key=os.getenv('CLOUDINARY_API_KEY'),
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
+
+def cloudinary_is_configured():
+    return all([
+        os.getenv('CLOUDINARY_CLOUD_NAME'),
+        os.getenv('CLOUDINARY_API_KEY'),
+        os.getenv('CLOUDINARY_API_SECRET')
+    ])
+
+def allowed_image(filename):
+    return (
+        '.' in filename
+        and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
 
 @sticker_blueprint.route('/', methods=['GET'])
 def get_stickers():
@@ -45,6 +60,11 @@ def create_sticker():
     """
     if db is None:
         return jsonify({'message': 'Database not connected'}), 500
+
+    if not cloudinary_is_configured():
+        return jsonify({
+            'message': 'Cloudinary is not configured. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+        }), 500
         
     try:
         title = request.form.get('title', 'Untitled')
@@ -58,13 +78,19 @@ def create_sticker():
         
         if image_file.filename == '':
             return jsonify({'message': 'No image provided'}), 400
+
+        if not allowed_image(image_file.filename):
+            return jsonify({'message': 'Only JPG, PNG, and WEBP images are allowed'}), 400
             
         # Upload the file to Cloudinary directly from Flask's file stream
         upload_result = cloudinary.uploader.upload(
-            image_file,
+            image_file.stream,
             folder='prabha_stickers',
             allowed_formats=['jpg', 'png', 'jpeg', 'webp']
         )
+
+        if not upload_result.get('secure_url') or not upload_result.get('public_id'):
+            return jsonify({'message': 'Cloudinary upload failed'}), 502
         
         now = datetime.datetime.utcnow()
         new_sticker = {
@@ -82,7 +108,7 @@ def create_sticker():
         return jsonify(serialize_doc(new_sticker)), 201
     except Exception as e:
         print(f"Error creating sticker: {e}")
-        return jsonify({'message': 'Server Error'}), 500
+        return jsonify({'message': f'Upload failed: {str(e)}'}), 500
 
 @sticker_blueprint.route('/<sticker_id>', methods=['DELETE'])
 @protect

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ImagePlus, Trash2, Layout } from 'lucide-react';
+import axios from 'axios';
 import api from '../lib/axiosInstance';
 import type { Sticker, AnimationType } from '../types/api';
 
@@ -97,9 +98,13 @@ export default function Dashboard() {
       setTitle('');
       fetchStickers();
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Upload failed. Check backend configuration.';
-      setUploadError(msg);
+      if (axios.isAxiosError<{ message?: string }>(err)) {
+        setUploadError(
+          err.response?.data?.message || 'Upload failed. Check backend configuration.'
+        );
+      } else {
+        setUploadError('Upload failed. Check backend configuration.');
+      }
     } finally {
       setUploading(false);
     }
