@@ -1,27 +1,18 @@
-# Dependencies
 node_modules/
-
-# Build output
 build/
 dist/
-
-# Test coverage
 coverage/
-
-# macOS
 .DS_Store
-
-# Logs
 *.log
 npm-debug.log*
 
-# ─────────────────────────────────────────────────────────────
-# Environment files — NEVER commit these
-# ─────────────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
 
-# Editor directories
 .vscode/
 .idea/
+
+__pycache__/
+*.py[cod]
+.venv/

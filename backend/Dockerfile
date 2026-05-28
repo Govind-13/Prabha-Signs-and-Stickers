@@ -1,23 +1,17 @@
-# backend/Dockerfile
-# Single-stage production image for Render deployment.
-# Render injects PORT at runtime — do NOT hardcode it here.
-
-FROM node:20-alpine
+FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install production dependencies only
-COPY package*.json ./
-RUN npm ci --omit=dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy application source
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-# Exclude local secrets and dev files (see .dockerignore)
-# backend/.env must NOT be in the image
+ENV FLASK_APP=app.py
+ENV PYTHONUNBUFFERED=1
 
-ENV NODE_ENV=production
-
-# No hardcoded port — Render assigns PORT at runtime.
-# CMD reads process.env.PORT which Render injects.
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} app:app"]
