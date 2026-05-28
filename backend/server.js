@@ -8,33 +8,36 @@ dotenv.config();
 const app = express();
 
 // ─────────────────────────────────────────────────────────────
-// FIX: Restrict CORS to known origins instead of wildcard.
-// Add your Vercel URL (and localhost for dev) here.
+// CORS — restrict to known origins in production.
+// Set ALLOWED_ORIGINS in Render as a comma-separated list, e.g.:
+//   https://prabha-signs-and-stickers.vercel.app
+// Falls back to open CORS if not set (so the site keeps working
+// while you configure env vars).
 // ─────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+const rawOrigins = process.env.ALLOWED_ORIGINS || '';
+const allowedOrigins = rawOrigins
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
 
-// Always allow localhost during development
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
-}
+const corsOptions =
+  allowedOrigins.length > 0
+    ? {
+        origin: (origin, callback) => {
+          // Allow no-origin requests (curl, Postman, mobile apps)
+          if (!origin) return callback(null, true);
+          if (allowedOrigins.includes(origin)) return callback(null, true);
+          callback(new Error(`CORS: origin "${origin}" not allowed`));
+        },
+        credentials: true,
+      }
+    : {}; // open CORS until ALLOWED_ORIGINS is configured
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin "${origin}" not allowed`));
-  },
-  credentials: true,
-}));
-
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ─────────────────────────────────────────────────────────────
-// MongoDB connection
+// MongoDB
 // ─────────────────────────────────────────────────────────────
 const connectDB = async () => {
   try {
@@ -67,12 +70,6 @@ app.get('/', (_req, res) => {
   res.send('Prabha Signs & Stickers API is running...');
 });
 
-// ─────────────────────────────────────────────────────────────
-// FIX: Do NOT read PORT from .env in production — Render injects it.
-// Fallback to 5000 for local dev only when PORT is not set at all.
-// ─────────────────────────────────────────────────────────────
+// Render injects PORT — fallback to 5000 for local dev only
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

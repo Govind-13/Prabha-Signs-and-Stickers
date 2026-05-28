@@ -1,28 +1,24 @@
 const jwt = require('jsonwebtoken');
 
 // ─────────────────────────────────────────────────────────────
-// FIX: Fail fast at startup if JWT_SECRET is weak or missing.
-// Generate a strong secret with:
-//   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+// Warn loudly at startup if JWT_SECRET is weak/missing,
+// but don't crash the server (so the site keeps running while
+// env vars are being configured in Render).
 // ─────────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET environment variable is not set.');
-  process.exit(1);
-}
-
-if (JWT_SECRET.length < 32) {
-  console.error(
-    'FATAL: JWT_SECRET is too short (minimum 32 characters). ' +
-    'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
-  );
-  process.exit(1);
+  console.error('WARNING: JWT_SECRET is not set. Admin login will fail.');
+} else if (JWT_SECRET.length < 32) {
+  console.error('WARNING: JWT_SECRET is too short (min 32 chars). Use a stronger secret.');
 }
 
 const protect = (req, res, next) => {
-  const header = req.headers.authorization;
+  if (!JWT_SECRET) {
+    return res.status(500).json({ message: 'Server misconfiguration: JWT_SECRET not set' });
+  }
 
+  const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Not authorized, no token' });
   }
@@ -36,8 +32,7 @@ const protect = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.adminId = decoded.id;
     return next();
-  } catch (error) {
-    // Don't leak error details to the client
+  } catch {
     return res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };
